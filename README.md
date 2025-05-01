@@ -106,7 +106,7 @@ Enter the path to custom payload file (optional): payloads/dom_payloads.txt
 
 - Folder structure:
   ```
-  xss-check/
+  XSS-Scripting-Checker/
   ├── README.md
   ├── payloads.txt
   ├── xss-static.py
@@ -121,7 +121,8 @@ Enter the path to custom payload file (optional): payloads/dom_payloads.txt
 ### Manual Testing (`xss-static.py`)
 1. Navigate to folder:
    ```bash
-   cd path/to/xss-check
+   cd path/to/XSS-Scripting-Checker
+
    ```
 2. Run:
    ```bash
