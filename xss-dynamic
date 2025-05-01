@@ -1,0 +1,235 @@
+import os
+import re
+import requests
+from urllib.parse import urljoin, urlparse, quote
+import logging
+from concurrent.futures import ThreadPoolExecutor
+from tqdm import tqdm
+from bs4 import BeautifulSoup
+
+# Logging setup
+logging.basicConfig(filename='xss_test_results.log', level=logging.INFO,
+                    format='%(asctime)s - %(message)s')
+
+class XSSDetector:
+    def __init__(self, target_url):
+        self.target_url = target_url
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (XSS Scanner)'
+        })
+
+    def scan_page(self):
+        """Main page scanning function"""
+        print(f"\n[+] Starting scan: {self.target_url}")
+
+        try:
+            response = self.session.get(self.target_url, timeout=10)
+            response.raise_for_status()
+
+            # Parse HTML content
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            # Find all forms (potential for Stored XSS)
+            forms = soup.find_all('form')
+            print(f"\n[+] Found {len(forms)} forms on the page")
+
+            # Find all links and script URLs (potential for Reflected XSS)
+            links = soup.find_all('a', href=True)
+            scripts = soup.find_all('script', src=True)
+
+            # Collect unique URL parameters
+            url_params = self._extract_url_params(response.url, links, scripts)
+            print(f"[+] Found {len(url_params)} unique URL parameters")
+
+            return forms, url_params
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error during page scan: {e}")
+            print(f"[-] Error: {e}")
+            return [], []
+
+    def _extract_url_params(self, base_url, links, scripts):
+        """Extract URL parameters from links on the page"""
+        params = set()
+
+        # Check base URL
+        params.update(self._get_params_from_url(base_url))
+
+        # Check all <a> links
+        for link in links:
+            full_url = urljoin(base_url, link['href'])
+            params.update(self._get_params_from_url(full_url))
+
+        # Check all <script src="">
+        for script in scripts:
+            full_url = urljoin(base_url, script['src'])
+            params.update(self._get_params_from_url(full_url))
+
+        return params
+
+    def _get_params_from_url(self, url):
+        """Extract parameters from a given URL"""
+        params = set()
+        try:
+            parsed = urlparse(url)
+            if parsed.query:
+                for param in parsed.query.split('&'):
+                    if '=' in param:
+                        params.add(param.split('=')[0])
+        except:
+            pass
+        return params
+
+    def find_input_fields(self, form):
+        """Find all input fields within a form"""
+        inputs = form.find_all(['input', 'textarea', 'select'])
+        fields = []
+
+        for input_field in inputs:
+            if input_field.get('type') in ['hidden', 'submit']:
+                continue
+
+            name = input_field.get('name') or input_field.get('id')
+            if name:
+                fields.append({
+                    'name': name,
+                    'type': input_field.name,
+                    'value': input_field.get('value', '')
+                })
+
+        return fields
+
+
+class XSSTester:
+    def __init__(self):
+        self.payloads = self._load_payloads()
+
+    def _load_payloads(self):
+        """Load XSS payloads from file"""
+        try:
+            with open('payloads/xss_payloads.txt', 'r') as f:
+                return [line.strip() for line in f if line.strip()]
+        except:
+            return [
+                '<script>alert(1)</script>',
+                '" onmouseover=alert(1)',
+                "'><img src=x onerror=alert(1)>",
+                'javascript:alert(1)'
+            ]
+
+    def test_stored_xss(self, url, form, fields, timeout=10):
+        """Test forms for Stored XSS"""
+        vulnerabilities = []
+        form_action = form.get('action') or url
+
+        for payload in self.payloads:
+            try:
+                data = {}
+                for field in fields:
+                    data[field['name']] = payload if field['type'] != 'hidden' else field['value']
+
+                response = requests.post(urljoin(url, form_action), data=data, timeout=timeout)
+
+                if payload in response.text:
+                    vulnerabilities.append({
+                        'form': form_action,
+                        'field': field['name'],
+                        'payload': payload
+                    })
+
+            except Exception as e:
+                logging.error(f"Error testing form: {e}")
+
+        return vulnerabilities
+
+    def test_reflected_xss(self, url, param, timeout=10):
+        """Test URL parameters for Reflected XSS"""
+        vulnerabilities = []
+
+        for payload in self.payloads:
+            try:
+                test_url = f"{url}?{param}={quote(payload)}"
+                response = requests.get(test_url, timeout=timeout)
+
+                if payload in response.text:
+                    vulnerabilities.append({
+                        'param': param,
+                        'payload': payload,
+                        'url': test_url
+                    })
+
+            except Exception as e:
+                logging.error(f"Error testing parameter: {e}")
+
+        return vulnerabilities
+
+
+def print_vulnerabilities(vuln_type, vulnerabilities):
+    """Prints found vulnerabilities"""
+    print(f"\n=== {vuln_type} XSS Vulnerabilities ===")
+
+    if not vulnerabilities:
+        print("None found")
+        return
+
+    for i, vuln in enumerate(vulnerabilities, 1):
+        if vuln_type == "Stored":
+            print(f"{i}. Form: {vuln['form']}")
+            print(f"   Field: {vuln['field']}")
+            print(f"   Payload: {vuln['payload']}\n")
+        else:
+            print(f"{i}. Parameter: {vuln['param']}")
+            print(f"   URL: {vuln['url']}\n")
+
+
+def main():
+    print("=== Enhanced XSS Scanner ===")
+
+    # Get target URL from user
+    target_url = input("Enter URL to scan: ").strip()
+    if not target_url.startswith(('http://', 'https://')):
+        target_url = 'http://' + target_url
+
+    # Scan the page
+    detector = XSSDetector(target_url)
+    forms, url_params = detector.scan_page()
+
+    if not forms and not url_params:
+        print("[-] No elements found for testing")
+        return
+
+    # Run XSS tests
+    tester = XSSTester()
+    stored_vulns = []
+    reflected_vulns = []
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        # Test forms for Stored XSS
+        if forms:
+            print("\n[+] Testing forms for Stored XSS...")
+            for form in tqdm(forms, desc="Forms"):
+                fields = detector.find_input_fields(form)
+                if fields:
+                    vulns = tester.test_stored_xss(target_url, form, fields)
+                    stored_vulns.extend(vulns)
+
+        # Test URL parameters for Reflected XSS
+        if url_params:
+            print("\n[+] Testing URL parameters for Reflected XSS...")
+            for param in tqdm(url_params, desc="URL Params"):
+                vulns = tester.test_reflected_xss(target_url, param)
+                reflected_vulns.extend(vulns)
+
+    # Display results
+    print_vulnerabilities("Stored", stored_vulns)
+    print_vulnerabilities("Reflected", reflected_vulns)
+
+    # Log results
+    logging.info(f"Stored XSS vulnerabilities found: {len(stored_vulns)}")
+    logging.info(f"Reflected XSS vulnerabilities found: {len(reflected_vulns)}")
+
+    print("\n[+] Scanning complete!")
+
+if __name__ == "__main__":
+    main()
