@@ -1,102 +1,158 @@
----
+# XSS Vulnerability Testing Suite
 
-# XSS Scripting-Checker
-
-This Python script is designed for testing **Stored XSS** and **Reflected XSS** vulnerabilities on web applications. The script allows you to test a list of XSS payloads against specified URLs. It automatically finds and lists available payload files in the `payloads` directory and allows you to select one for testing.
-
-### Features:
-- **Stored XSS Testing**: Tests for vulnerabilities where payloads are stored on the server.
-- **Reflected XSS Testing**: Tests for vulnerabilities where payloads are reflected immediately back to the user in the response.
-- **Automatic Payload Selection**: Automatically detects and lists payload files in the `payloads` folder.
-- **Flexible URL Input**: Allows users to specify the URLs for both Stored and Reflected XSS testing.
-- **Logging**: Logs the results of the tests to a file for later review.
-- **Threaded Testing**: Tests are run concurrently using multiple threads to speed up the process.
+This package includes multiple scripts for detecting and analyzing various types of Cross-Site Scripting (XSS) vulnerabilities in web applications. It provides manual, automated, and DOM-based testing tools, along with detailed reporting features.
 
 ---
 
-## Requirements
+## 1. Basic XSS Testing Script (`xss_static.py`)
+
+### Overview
+An interactive script that tests a specified URL for **Stored** and **Reflected** XSS vulnerabilities using payloads from user-selected files in the `payloads/` directory.
+
+### Features
+- **Automatic Payload Selection:** Lists available payload files in `payloads/` for quick selection.
+- **Stored & Reflected XSS Testing:** Tests both types concurrently.
+- **Multithreading & Progress Bars:** Uses `concurrent.futures` and `tqdm` for efficiency and visual progress.
+- **Logging & Summary:** Results are logged in `xss_test_results.log` and summarized after testing.
+
+### Usage
+- Prepare payload files in the `payloads/` folder.
+- Run:
+  ```bash
+  python xss-static.py
+  ```
+- Follow prompts to input URLs, select payloads, set timeout, and proceed.
+
+### Output
+- Console updates with vulnerabilities detected.
+- Log file: `xss_test_results.log`.
+- Summary printed at the end.
+
+---
+
+## 2. Automated XSS Scanner (`xss-dynamic.py`)
+
+### Overview
+A comprehensive scanner that:
+- Crawls the target URL to find forms, links, and URL parameters.
+- Detects stored and reflected XSS by submitting payloads.
+- Generates detailed HTML and JSON reports.
+
+### Features
+- Uses `BeautifulSoup` for HTML parsing.
+- Finds input fields in forms for stored XSS testing.
+- Supports custom payload lists via CLI.
+- Produces detailed, navigable reports.
+
+### Usage
+```bash
+python xss-dynamic.py --url http://targetsite.com --payload-file path/to/payloads.txt --output report.html --json results.json
+```
+
+### Example
+```bash
+python xss-dynamic.py --url http://testsite.com --payload-file payloads/xss_payloads.txt
+```
+
+### Output
+- Console logs.
+- HTML report (`report.html`).
+- JSON report (`results.json`).
+
+---
+
+## 3. DOM-Based XSS Scanner (`xss-DOM.py`)
+
+### Overview
+Analyzes inline and external JavaScript for potential DOM-based XSS vulnerabilities by checking source-sink patterns.
+
+### Features
+- Loads custom payloads.
+- Fetches and examines external scripts and inline JS.
+- Checks for source-to-sink assignments indicating vulnerabilities.
+- Generates a JSON report.
+
+### Usage
+```bash
+python xss-DOM.py
+```
+Follow prompts to enter:
+- Target URL.
+- Optional custom payload file path.
+
+### Example
+```bash
+python xss-DOM.py
+# Follow prompts
+Enter the target URL: http://testsite.com
+Enter the path to custom payload file (optional): payloads/dom_payloads.txt
+```
+
+### Output
+- `dom_xss_report.json` containing detected vulnerabilities.
+
+---
+
+## Setup & Requirements
 
 - **Python 3.x**  
-  Ensure that Python 3.x is installed on your system. You can download Python from the [official website](https://www.python.org/downloads/).
-
-- **Required Libraries**  
-  The script requires the following Python libraries:
-  - `requests`: For making HTTP requests to the target URLs.
-  - `tqdm`: For displaying a progress bar during testing.
-  - `concurrent.futures`: For running tests concurrently (multi-threading).
-
-  You can install the required libraries using `pip`:
-
+- Libraries to install:
   ```bash
-  pip install requests tqdm
+  pip install requests tqdm beautifulsoup4
   ```
 
----
-
-## Setup
-
-1. **Clone or Download the Repository**
-
-   Clone or download the repository to your local machine:
-
-   ```bash
-   git clone https://github.com/fish-hue/XSS-Scripting-Checker.git
-   ```
-
-   or just download the ZIP file and extract it.
-
-2. **Folder Structure**
-
-   The folder structure should look like this:
-
-   ```
-   xss-check/
-   ├── payloads/
-   │   ├── payload1.txt
-   │   └── payload2.txt
-   └── xss-chk.py
-   ```
-
-   - `payloads/`: This folder contains the payload files. These files should have `.txt` extensions.
-   - `xss-chk.py`: This is the main script that performs the XSS tests.
+- Folder structure:
+  ```
+  xss-check/
+  ├── README.md
+  ├── payloads.txt
+  ├── xss-static.py
+  ├── xss_dynamic.py
+  └── xss-DOM.py
+  ```
 
 ---
 
 ## How to Use
 
-1. **Navigate to the `xss-check` Directory**  
-   Open a terminal and navigate to the `xss-check` directory:
-
+### Manual Testing (`xss-static.py`)
+1. Navigate to folder:
    ```bash
    cd path/to/xss-check
    ```
-
-2. **Run the Script**  
-   Execute the script using Python:
-
+2. Run:
    ```bash
-   python xss-chk.py
+   python xss-static.py
    ```
+3. Follow prompts:
+   - Stored URL
+   - Reflected URL
+   - Select payload file
+   - Set timeout
+   - Confirm to start testing
 
-3. **Follow the Prompts**  
-   The script will guide you through the testing process:
-
-   - **Enter the URL for Stored XSS Testing**: Provide the URL of the page where stored XSS is possible (e.g., `http://example.com/submit`).
-   - **Enter the URL for Reflected XSS Testing**: Provide the URL for reflected XSS testing (e.g., `http://example.com/search?q=`).
-   - **Choose a Payload File**: The script will automatically list all available `.txt` payload files in the `payloads/` folder. Select the appropriate file by number.
-   - **Set Timeout**: The script will ask for a timeout value (in seconds) for the HTTP requests.
-   - **Confirm to Proceed**: You will be asked if you want to proceed with the testing.
-
-4. **View the Results**  
-   The script will display the results of the testing in the terminal. It will also log the results to a file called `xss_test_results.log` for future reference.
+Results appear live, and logs are saved in `xss_test_results.log`.
 
 ---
 
-## Example
-
-Here’s an example of how it might look when running the script:
-
+### Automated Scanner (`xss-dynamic.py`)
+Execute with parameters:
 ```bash
+python xss-dynamic.py --url http://yourtarget.com --payload-file payloads/your_payloads.txt
+```
+
+### DOM-based Scanner (`xss-DOM.py`)
+Run:
+```bash
+python xss-DOM.py
+```
+Input target URL and optional payload file when prompted.
+
+---
+
+## Example Output Snippet
+
+```plaintext
 Welcome to the XSS Testing Script!
 
 Enter the URL for Stored XSS testing (e.g., example.com/submit): http://example.com/submit
@@ -130,9 +186,4 @@ Reflected XSS Vulnerabilities Found: 1
 
 ---
 
-## Troubleshooting
-
-- **File Not Found**: If the script can't find the `payloads/` folder or the specified payload file, double-check that the folder and the `.txt` files are correctly placed in the same directory as `xss-chk.py`.
-- **Missing Libraries**: If you encounter errors related to missing libraries (`requests` or `tqdm`), make sure to install them using `pip` as mentioned in the Requirements section.
-
----
+## Happy Testing!
