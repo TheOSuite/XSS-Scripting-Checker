@@ -39,11 +39,14 @@ A comprehensive scanner that:
 - Generates detailed HTML and JSON reports.
 
 ### Features
-- Uses `BeautifulSoup` for HTML parsing.
-- Finds input fields in forms for stored XSS testing.
-- Supports custom payload lists via CLI.
-- Produces detailed, navigable reports.
-
+- **URL Validation:** Ensures the target URL is valid and accessible.
+- **Payload Support:** Uses default payloads or custom payload files.
+- **Parallel Execution:** Speeds up scanning using multithreading with `ThreadPoolExecutor`.
+- **Retries & Timeouts:** Automatically retries failed requests with configurable timeouts.
+- **Proxy Support:** Allows specifying HTTP/S proxies for the scan.
+- **Logging & Verbosity:** Configurable logging and debug output.
+- **Detailed Reports:** Generates both HTML and JSON reports with findings, including payloads, form actions, and fields.
+  
 ### Usage
 ```bash
 python xss-dynamic.py --url http://targetsite.com --payload-file path/to/payloads.txt --output report.html --json results.json
@@ -186,4 +189,11 @@ Reflected XSS Vulnerabilities Found: 1
 
 ---
 
-## Happy Testing!
+## Proxy Support
+
+If you are behind a proxy, use the `--proxy` flag to specify it:
+
+```bash
+python xss-dynamic.py --url https://example.com --proxy http://proxy.example.com:8080
+```
+---
