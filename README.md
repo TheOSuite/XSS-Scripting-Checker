@@ -1,5 +1,9 @@
 # XSS Vulnerability Testing Suite
 
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![License](https://img.shields.io/github/license/TheOSuite/XSS-Scripting-Checker)
+![Build](https://img.shields.io/badge/Build-Passing-brightgreen)
+
 This package includes multiple scripts for detecting and analyzing various types of Cross-Site Scripting (XSS) vulnerabilities in web applications. It provides manual, automated, and DOM-based testing tools, along with detailed reporting features.
 
 ---
